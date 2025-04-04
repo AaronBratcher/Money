@@ -127,7 +127,7 @@ enum CurrencyExchange {
 	static let agent = Agent()
 	static let base = "http://data.fixer.io/api/"
 	static let latest = "latest"
-	static let accessKey = "41357b7876f8249336ce2cc52f0ea2b8"
+	static let accessKey = "<To be filled in by user>"
 
 }
 
