@@ -20,7 +20,7 @@ public struct CurrencyDetails: Equatable, Codable {
 	}
 }
 
-public enum Currency: String, CaseIterable, Codable {
+public enum Currency: String, CaseIterable, Codable, Sendable {
 	case australianDollar
 	case bahrainiDinar
 	case britishPound

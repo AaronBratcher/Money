@@ -57,37 +57,37 @@ class ExchangeTests: XCTestCase {
 	}
 
 	func testSimpleConversion() async throws {
-		Money.exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
+		let exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
 
 		let usd = Money(currency: .usDollar, amount: "1,000.00")
-		let eur = try await usd.convert(to: .euro)
+        let eur = try await usd.convert(to: .euro, using: exchangeRateManager)
 
 		XCTAssertEqual(eur.amountString, "919.15")
 	}
 
 	func testSimpleReverseConversion() async throws {
-		Money.exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
+		let exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
 
 		let eur = Money(currency: .euro, amount: "1,000.00")
-		let usd = try await eur.convert(to: .usDollar)
+		let usd = try await eur.convert(to: .usDollar, using: exchangeRateManager)
 
 		XCTAssertEqual(usd.amountString, "1,087.95")
 	}
 
 	func testJOD2USD() async throws {
-		Money.exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
+		let exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
 
 		let jod = Money(currency: .jordanDinar, amount: "1,000")
-		let usd = try await jod.convert(to: .usDollar)
+		let usd = try await jod.convert(to: .usDollar, using: exchangeRateManager)
 
 		XCTAssertEqual(usd.amountString, "1,410.48")
 	}
 
 	func testJPY2CNY() async throws {
-		Money.exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
+		let exchangeRateManager = ExchangeRateManager(with: conversionMatrix, base: .euro)
 
 		let jpn = Money(currency: .japaneseYen, amount: "1000")
-		let cny = try await jpn.convert(to: .chineseRenminbi)
+		let cny = try await jpn.convert(to: .chineseRenminbi, using: exchangeRateManager)
 
 		XCTAssertEqual(cny.amountString, "50.32")
 	}
