@@ -11,9 +11,9 @@ import Foundation
 public let maxDecimalPrecision = 4
 
 public struct CurrencyDetails: Equatable, Codable {
-	let name: String
-	let alphabeticCode: String
-	let decimalPrecision: Int
+	public let name: String
+	public let alphabeticCode: String
+	public let decimalPrecision: Int
 
 	public static func == (lhs: Self, rhs: Self) -> Bool {
 		return lhs.alphabeticCode == rhs.alphabeticCode

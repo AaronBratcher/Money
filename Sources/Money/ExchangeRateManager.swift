@@ -8,22 +8,22 @@
 import Foundation
 import Combine
 
-enum MoneyError: Error {
+public enum MoneyError: Error {
 	case needKey
 	case download
 	case parse
 	case missingCurrency(String)
 }
 
-typealias ConversionMatrix = [Currency: Double]
+public typealias ConversionMatrix = [Currency: Double]
 
 public final actor ExchangeRateManager {
 	private var conversionMatrix: ConversionMatrix = [:]
-	private(set) var baseCurrency: Currency = .euro
+	public private(set) var baseCurrency: Currency = .euro
 	private var lastDownload: Date?
-	private var subscriptions: Set<AnyCancellable> = []
+	private var subscription: AnyCancellable?
 
-	init(with matrix: ConversionMatrix? = nil, base: Currency? = .euro) {
+	public init(with matrix: ConversionMatrix? = nil, base: Currency? = .euro) {
 		if let matrix = matrix {
 			self.conversionMatrix = matrix
 		}
@@ -32,23 +32,23 @@ public final actor ExchangeRateManager {
 			self.baseCurrency = base
 		}
 	}
-    
-	func exchangeRate(from currency: Currency, to newCurrency: Currency) async throws -> Double {
+
+	public func exchangeRate(from currency: Currency, to newCurrency: Currency) async throws -> Double {
 		let hoursElapsed: Int
 		if let lastDownload = lastDownload {
-			hoursElapsed = Int(lastDownload.timeIntervalSince(Date()) / 14400)
+			hoursElapsed = Int(Date().timeIntervalSince(lastDownload) / 3600)
 		} else {
 			hoursElapsed = 0
 		}
 
-		if conversionMatrix.isEmpty || hoursElapsed > 4 {
+		if conversionMatrix.isEmpty || hoursElapsed >= 4 {
 			try await downloadMatrix()
 			lastDownload = Date()
 		}
 
 		let rate: Double
 		guard let currencyRate = conversionMatrix[currency] else {
-			throw MoneyError.missingCurrency(newCurrency.rawValue)
+			throw MoneyError.missingCurrency(currency.rawValue)
 		}
 
 		guard let newCurrencyRate = conversionMatrix[newCurrency] else {
@@ -87,18 +87,17 @@ public final actor ExchangeRateManager {
 	typealias ExchangeResults = Result<Response, MoneyError>
 	private func downloadConversionMatrix(completion: @escaping (ExchangeResults) -> Void) {
 		do {
-			try CurrencyExchange.retrieveLatest()
-				.sink(receiveCompletion: { (apiCompletion) in
-				switch apiCompletion {
-				case .failure(_):
-					completion(.failure(.download))
-				case .finished:
-					break
-				}
-			}) { response in
-				completion(.success(response))
-			}
-				.store(in: &subscriptions)
+			subscription = try CurrencyExchange.retrieveLatest()
+				.sink(receiveCompletion: { apiCompletion in
+					switch apiCompletion {
+					case .failure(let error):
+						completion(.failure(error is DecodingError ? .parse : .download))
+					case .finished:
+						break
+					}
+				}, receiveValue: { response in
+					completion(.success(response))
+				})
 		} catch {
 			completion(.failure(.download))
 			return
@@ -118,14 +117,16 @@ struct Agent {
 			.dataTaskPublisher(for: request)
 			.map(\.data)
 			.receive(on: DispatchQueue.main)
-			.decode(type: T.self, decoder: JSONDecoder())
+			.decode(type: T.self, decoder: decoder)
 			.eraseToAnyPublisher()
 	}
 }
 
 enum CurrencyExchange {
 	static let agent = Agent()
-	static let base = "http://data.fixer.io/api/"
+	// fixer.io's free plan only serves HTTP; HTTPS requires a paid plan. Downgrade to
+	// "http://" here if you're on the free plan and this starts failing.
+	static let base = "https://data.fixer.io/api/"
 	static let latest = "latest"
 	static let accessKey = "<To be filled in by user>"
 
@@ -149,11 +150,25 @@ extension CurrencyExchange {
 		return agent.run(request)
 	}
 
-	static func retrieve(for: Date) throws -> AnyPublisher<Response, Error> {
-		guard let base = URL(string: CurrencyExchange.base) else {
+	static func retrieve(for date: Date) throws -> AnyPublisher<Response, Error> {
+		guard accessKey.isNotEmpty else { throw MoneyError.needKey }
+
+		let dateFormatter = DateFormatter()
+		dateFormatter.dateFormat = "yyyy-MM-dd"
+		dateFormatter.timeZone = TimeZone(identifier: "UTC")
+		let dateString = dateFormatter.string(from: date)
+
+		let currencies = Currency.allCases.map { $0.rawValue }.joined(separator: ",")
+		var urlString = CurrencyExchange.base
+		urlString += dateString
+		urlString += "?access_key=" + CurrencyExchange.accessKey
+		urlString += "&symbols=" + currencies
+		urlString += "&format=1"
+		guard let url = URL(string: urlString) else {
 			throw MoneyError.download
 		}
-		let request = URLRequest(url: base.appendingPathComponent(CurrencyExchange.accessKey))
+
+		let request = URLRequest(url: url)
 		return agent.run(request)
 	}
 }

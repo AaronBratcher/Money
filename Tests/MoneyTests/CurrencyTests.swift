@@ -9,6 +9,12 @@ import XCTest
 @testable import Money
 
 class CurrencyTests: XCTestCase {
+	func testPowZero() throws {
+		// Regression test: x^0 must be 1, not 0.
+		XCTAssertEqual(10.pow(toPower: 0), 1)
+		XCTAssertEqual(10.pow(toPower: 1), 10)
+	}
+
     func testCurrencies() throws {
 		 var codes: [String] = []
 

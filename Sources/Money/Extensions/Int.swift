@@ -2,7 +2,7 @@ import Foundation
 
 public extension Int {
 	var currencyAmount: Double {
-		return Double(self / (10.pow(toPower: maxDecimalPrecision)))
+		return Double(self) / Double(10.pow(toPower: maxDecimalPrecision))
 	}
 
 	var currencyString: String {
@@ -66,7 +66,7 @@ public extension Int {
 
 extension Int {
 	func pow(toPower: Int) -> Int {
-		guard toPower > 0 else { return 0 }
+		guard toPower >= 0 else { return 0 }
 		return Array(repeating: self, count: toPower).reduce(1, *)
 	}
 }

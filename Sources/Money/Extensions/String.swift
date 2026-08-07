@@ -11,7 +11,6 @@ public extension String {
 		let groupingSeparator = Locale.current.groupingSeparator!
 
 		var inputString = self
-		var negative = false
 
 		// remove groupingSeparator from inputString
 		let groupingInput = CharacterSet(charactersIn: groupingSeparator)
@@ -22,7 +21,12 @@ public extension String {
 			commaRange = inputString.rangeOfCharacter(from: groupingInput)
 		}
 
-		let invalidCharacters = CharacterSet(charactersIn: "0123456789\(decimalSeparator)-").inverted
+		let negative = inputString.hasPrefix("-")
+		if negative {
+			inputString.removeFirst()
+		}
+
+		let invalidCharacters = CharacterSet(charactersIn: "0123456789\(decimalSeparator)").inverted
 
 		if inputString.rangeOfCharacter(from: invalidCharacters) != nil {
 			return 0
@@ -30,13 +34,8 @@ public extension String {
 
 		let amountParts = inputString.components(separatedBy: decimalSeparator)
 		var value = Int(amountParts[0]) ?? 0
-		if value < 0 {
-			value *= -1
-			negative = true
-		}
 
 		value *= (10.pow(toPower: maxDecimalPrecision))
-		let decimalPrecision = decimalPrecision
 		if amountParts.count > 1 && decimalPrecision > 0 {
 			var decimal = amountParts[1]
 			decimal = String(decimal.prefix(decimalPrecision))

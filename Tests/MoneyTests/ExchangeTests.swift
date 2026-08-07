@@ -91,4 +91,20 @@ class ExchangeTests: XCTestCase {
 
 		XCTAssertEqual(cny.amountString, "50.32")
 	}
+
+	func testMissingSourceCurrencyReportsSourceCurrency() async throws {
+		// Regression test: when the *source* currency is missing from the
+		// matrix, the error must name that currency, not the destination.
+		var matrix = conversionMatrix
+		matrix[.usDollar] = nil
+		let exchangeRateManager = ExchangeRateManager(with: matrix, base: .euro)
+
+		let usd = Money(currency: .usDollar, amount: "1.00")
+		do {
+			_ = try await usd.convert(to: .euro, using: exchangeRateManager)
+			XCTFail("Expected missingCurrency error")
+		} catch MoneyError.missingCurrency(let code) {
+			XCTAssertEqual(code, Currency.usDollar.rawValue)
+		}
+	}
 }
