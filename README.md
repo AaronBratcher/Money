@@ -8,7 +8,7 @@
 include Money as a dependency in your Package.swift file:
 ```swift
 dependencies: [
-   .package(url: "https://github.com/AaronBratcher/Money", from: "1.1.1")
+   .package(url: "https://github.com/AaronBratcher/Money", from: "1.1.3")
 ]
 ```
 
@@ -137,11 +137,14 @@ func currencyValue(decimalPrecision: Int) -> Int
 
 ```swift
 public final actor ExchangeRateManager {
-    init(with matrix: [Currency: Double]? = nil, base: Currency? = .euro)
+    public init(with matrix: ConversionMatrix? = nil, base: Currency? = .euro)
 
-    func exchangeRate(from currency: Currency, to newCurrency: Currency) async throws -> Double
+    public private(set) var baseCurrency: Currency
+
+    public func exchangeRate(from currency: Currency, to newCurrency: Currency) async throws -> Double
 }
 ```
+- `ConversionMatrix` is a public `[Currency: Double]` typealias.
 - If no `matrix` is supplied, the manager downloads one on first use and refreshes it automatically once it's more than 4 hours old.
 - Downloading requires a fixer.io access key. Set `CurrencyExchange.accessKey` (in `ExchangeRateManager.swift`) before making a live conversion; without a key, `exchangeRate` throws `MoneyError.needKey`.
 - Pass your own `matrix` (e.g. for tests, or a rate source other than fixer.io) to skip the network call entirely.
@@ -154,8 +157,12 @@ let price = Money(currency: .usDollar, amount: "23.23")
 do {
     let converted = try await price.convert(to: .euro, using: exchangeRateManager)
     // converted.amountString
+} catch MoneyError.needKey {
+    // CurrencyExchange.accessKey hasn't been set
+} catch MoneyError.missingCurrency(let code) {
+    // the conversion matrix didn't include a rate for the given ISO code
 } catch {
-    // handle error, e.g. MoneyError.needKey, .download, .parse, .missingCurrency
+    // .download or .parse — the fixer.io request failed or its response didn't decode
 }
 ```
 
